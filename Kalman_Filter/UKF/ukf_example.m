@@ -61,7 +61,8 @@ for i = 1:size(Z_r,2)
    % Update steps.
    [z_hat,Z_hat,P_zz,Z_dev]=ut(h,X_hat,W,nz,R);
    P_xz = X_dev *  diag(W) * Z_dev';
-   K = P_xz / P_zz;
+   S = R + P_zz;
+   K = P_xz / S;
    m = m_hat + K *(Z_r(:,i) - z_hat);
    P = P_hat -  P_xz * K';
    MM(:,i) = m;
