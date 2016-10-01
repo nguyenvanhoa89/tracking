@@ -1,7 +1,6 @@
-% Modified by Hoa V. Nguyen to demonstrate the Kalman Filter in a simple
-% example: tracking a vehicle with constant velocity moving in 2D space. 
-% Date: September 21st 2016
-% Copyright (C) 2007 Jouni Hartikainen
+% Modified by Hoa V. Nguyen to demonstrate the Extended Kalman Filter in a simple
+% example: tracking a pendulum trajectories through its alpha corner value
+% Date: September 28th 2016
 function ekf_example
 % Stepsize
 dt = 0.01;
