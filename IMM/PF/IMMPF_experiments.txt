@@ -1,0 +1,58 @@
+Ns = 10000;
+1st:
+q = 50;
+p_transitional = [1-1/5000 1/5000; 1/500 1-1/500];
+NRMSE of Mean IMMPF       : 0.85%
+NRMSE of Mean Original    : 1.42%
+PF Execution Time         :270.32
+
+2nd:
+q = 50;
+t1 = 50; 
+t2 = 5;
+%% Discrete Pi Initial Value 
+% p_transitional = [1-1/5000 1/5000; 1/500 1-1/500];
+
+p_transitional = [1-dt/t1 dt/t1; dt/t2 1-dt/t2];
+
+NRMSE of Mean IMMPF       : 1.80%
+NRMSE of Mean Original    : 3.62%
+PF Execution Time         :122.77
+
+3rd:
+q = 50;
+t1 = 5000; 
+t2 = 5;
+%% Discrete Pi Initial Value 
+% p_transitional = [1-1/5000 1/5000; 1/500 1-1/500];
+
+p_transitional = [1-dt/t1 dt/t1; dt/t2 1-dt/t2];
+
+NRMSE of Mean IMMPF       : 0.98%
+NRMSE of Mean Original    : 0.80%
+PF Execution Time         :107.82
+
+4th:
+q = 1;
+t1 = 50; 
+t2 = 5;
+%% Discrete Pi Initial Value 
+% p_transitional = [1-1/5000 1/5000; 1/500 1-1/500];
+
+p_transitional = [1-dt/t1 dt/t1; dt/t2 1-dt/t2];
+NRMSE of Mean IMMPF       : 0.06%
+NRMSE of Mean Original    : 0.11%
+PF Execution Time         :100.99
+
+5th:
+
+q = 1;
+t1 = 5000; 
+t2 = 500;
+%% Discrete Pi Initial Value 
+% p_transitional = [1-1/5000 1/5000; 1/500 1-1/500];
+
+p_transitional = [1-dt/t1 dt/t1; dt/t2 1-dt/t2];
+NRMSE of Mean IMMPF       : 0.16%
+NRMSE of Mean Original    : 0.27%
+PF Execution Time         :103.73

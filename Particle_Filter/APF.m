@@ -1,5 +1,5 @@
-function [xhk, pf] = particle_filter(sys, yk, pf, resampling_strategy)
-%% Generic particle filter
+function [xhk, pf] = APF(sys, yk, pf, resampling_strategy)
+%% Auxiliary particle filter
 %
 % Note: when resampling is performed on each step this algorithm is called
 % the Bootstrap particle filter
@@ -66,22 +66,43 @@ end
 xkm1 = pf.particles(:,:,k-1); % extract particles from last iteration;
 xk   = zeros(size(xkm1));     % = zeros(nx,Ns);
 wk   = zeros(size(wkm1));     % = zeros(Ns,1);
-
+vk   = zeros(size(wkm1));     % Parent weight
+iParents  = zeros(size(wkm1));
 %% Algorithm 3 of Ref [1]
-for i = 1:Ns
+
    % xk(:,i) = sample_vector_from q_xk_given_xkm1_yk given xkm1(:,i) and yk
    % Using the PRIOR PDF: pf.p_xk_given_xkm1: eq 62, Ref 1.
-   xk(:,i) = sys(k, xkm1(:,i), pf.gen_sys_noise());
+   
+   for i=1:Ns
+       vk(i) = wkm1(i) * pf.p_yk_given_xk(k, yk, sys(k-1, xkm1(:,i), zeros(nx,1) ));
+   end
+   %% Normalize parent weight vector
+   vk = vk./sum(vk);
+%    iPick     = 1;
+%    c         = cumsum(vk);
+%    threshold = rand/Ns;
+%    for i=1:Ns
+%         while threshold>c(iPick) && iPick<Ns, iPick = iPick + 1; end;
+%         iParents(i) = iPick;
+%         threshold    = threshold + 1/Ns;                
+%    end
+   
+   [~, ~, iParents] = resample(xk, vk, resampling_strategy);
+   for i=1:Ns
+        iParent    = iParents(i);
+        xk(:,i) = sys(k, xkm1(:,iParent), pf.gen_sys_noise()); 
+        wk(i)  = wkm1(iParent) * pf.p_yk_given_xk(k, yk, xk(:,i))/vk(iParent);
+   end
    
    % Equation 48, Ref 1.
    % wk(i) = wkm1(i) * p_yk_given_xk(yk, xk(:,i))*p_xk_given_xkm1(xk(:,i), xkm1(:,i))/q_xk_given_xkm1_yk(xk(:,i), xkm1(:,i), yk);
    
    % weights (when using the PRIOR pdf): eq 63, Ref 1
-   wk(i) = wkm1(i) * pf.p_yk_given_xk(k, yk, xk(:,i));
+%    wk(i) = wkm1(i) * pf.p_yk_given_xk(k, yk, xk(:,i));
    
    % weights (when using the OPTIMAL pdf): eq 53, Ref 1
    % wk(i) = wkm1(i) * p_yk_given_xkm1(yk, xkm1(:,i)); % we do not know this PDF
-end;
+
 
 %% Normalize weight vector
 wk = wk./sum(wk);
@@ -93,13 +114,13 @@ Neff = 1/sum(wk.^2);
 % remove this condition and sample on each iteration:
 % [xk, wk] = resample(xk, wk, resampling_strategy);
 %if you want to implement the bootstrap particle filter
-resample_percentaje = 0.50;
-Nt = resample_percentaje*Ns;
-if Neff < Nt
-   disp('Resampling ...')
-   [xk, wk] = resample(xk, wk, resampling_strategy);
-   % {xk, wk} is an approximate discrete representation of p(x_k | y_{1:k})
-end
+% resample_percentaje = 0.0;
+% Nt = resample_percentaje*Ns;
+% if Neff < Nt
+%    disp('Resampling ...')
+%    [xk, wk] = resample(xk, wk, resampling_strategy);
+%    % {xk, wk} is an approximate discrete representation of p(x_k | y_{1:k})
+% end
 
 %% Compute estimated state
 xhk = zeros(nx,1);
@@ -154,40 +175,17 @@ switch resampling_strategy
             end
         idx(t) = idxx; 
         end
-        
-    case 'RPF'
-        with_replacement = true;
-        idx = randsample(1:Ns, Ns, with_replacement, wk);
-        
-        
     case 'soft_systematic_resampling'
         [idx, wk] = rs_soft_systematic(wk);
    otherwise
       error('Resampling strategy not implemented')
 end;
 
-                % extract new particles
+xk = xk(:,idx);                    % extract new particles
 switch resampling_strategy
        case 'soft_systematic_resampling'
             fprintf('soft_systematic_resampling');
-             xk = xk(:,idx);    
-       case 'RPF'
-            fprintf('RPF');       
-            S=xk * diag(wk) * xk'; %empirical covariance matrix 
-            L=chol(S,'lower'); %the square root matrix of S 
-            m =size(xk,1);
-            epsilon=zeros(m,Ns); 
-            A=(4/(m+2))^(1/(m+4)); 
-            h=A*(Ns^(-1/(m+4))); 
-            xk = xk(:,idx);     
-            wk = repmat(1/Ns, 1, Ns); 
-            for i=1:Ns 
-                epsilon(:,i)=(h*L)*randn(1,m)'; 
-                xk(:,i)=xk(:,i)+h.*(L*(epsilon(:,i))); 
-            end
-            
-    otherwise
-      xk = xk(:,idx);     
+   otherwise
       wk = repmat(1/Ns, 1, Ns); 
 end;
         

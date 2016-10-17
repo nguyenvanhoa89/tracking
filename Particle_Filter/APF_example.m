@@ -1,7 +1,6 @@
 %% clear memory, screen, and close all figures
-tic;
 clear, clc, close all;
-
+tic;
 %% Process equation x[k] = sys(k, x[k-1], u[k]);
 nx = 2;  % number of states
 dt = 0.01;
@@ -71,6 +70,9 @@ pause
 xh = zeros(nx, T); xh(:,1) = xh0;
 yh = zeros(ny, T); yh(:,1) = obs(1, xh0, 0);
 
+xh_a = zeros(nx, T); xh_a(:,1) = xh0;
+yh_a = zeros(ny, T); yh_a(:,1) = obs(1, xh0, 0);
+
 pf.k               = 1;                   % initial iteration number
 pf.Ns              = 1000;                 % number of particles
 pf.w               = zeros(pf.Ns, T);     % weights
@@ -81,29 +83,42 @@ pf.gen_sys_noise   = gen_sys_noise;       % function for generating system noise
 %pf.p_x0 = p_x0;                          % initial prior PDF p(x[0])
 %pf.p_xk_given_ xkm1 = p_xk_given_xkm1;   % transition prior PDF p(x[k] | x[k-1])
 
+pf_a = pf;
+
 %% Estimate state
+%PF
+tic;
 for k = 2:T
    fprintf('Iteration = %d/%d\n',k,T);
-   % state estimation
-   pf.k = k;
    
-   [xh(:,k), pf] = particle_filter(sys, y(:,k), pf, 'RPF');
-   %    [xh(:,k), pf] = particle_filter(sys, y(:,k), pf, 'systematic_resampling');   
- 
-   % filtered observation
+   % state estimation
+   pf.k = k;   
+   [xh(:,k), pf] = particle_filter(sys, y(:,k), pf, 'multinomial_resampling');
    yh(:,k) = obs(k, xh(:,k), 0);
 end
+time_PF = toc;
 
-plot(1:T,x(1,:),'.',1:T,xh(1,:));
-legend('Real trajectory', 'Filtered');
+   %APF
+for k = 2:T
+   fprintf('Iteration = %d/%d\n',k,T);
+   pf_a.k = k;
+   [xh_a(:,k), pf_a] = APF(sys, y(:,k), pf_a, 'multinomial_resampling');
+   yh_a(:,k) = obs(k, xh_a(:,k), 0);
+end
+time_APF = toc - time_PF;
+
+plot(1:T,x(1,:),'.',1:T,xh(1,:),'x',1:T,xh_a(1,:));
+legend('Real trajectory', 'PF Filtered', 'APF Filtered');
 title('Position estimation with Particle filter.');
 xlabel('x');
 ylabel('y');
-
 NRMSE_PF = sqrt(mean((x(1,:)-xh(1,:)).^2))/(max(x(1,:))-min(x(1,:)))*1e2;
-fprintf('NRMSE of Mean PF          :%5.2f%%\n',NRMSE_PF);
+NRMSE_APF = sqrt(mean((x(1,:)-xh_a(1,:)).^2))/(max(x(1,:))-min(x(1,:)))*1e2;
 NRMSE_ORG = sqrt(mean((x(1,:)-y(1,:)).^2))/(max(x(1,:))-min(x(1,:)))*1e2;
-fprintf('NRMSE of Mean Original    :%5.2f%%\n',NRMSE_ORG);
-time_PF = toc;
-fprintf('PF Execution Time         :%5.2f\n',time_PF);
+fprintf('NRMSE of Mean Original      :%5.2f%%\n',NRMSE_ORG);
+fprintf('NRMSE of Mean PF            :%5.2f%%\n',NRMSE_PF);
+fprintf('NRMSE of Mean APF           :%5.2f%%\n',NRMSE_APF);
+fprintf('PF Execution Time           :%5.2f\n',time_PF);
+fprintf('APF Execution Time          :%5.2f\n',time_APF);
+time_whole = toc;
 return;
