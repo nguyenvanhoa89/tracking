@@ -2,7 +2,7 @@ function est = run_filter(model,meas)
 
 % This is the MATLAB code for the CBMeMBer filter proposed in
 % (without track labelling)
-% B.-T. Vo, B.-N. Vo, and A. Cantoni, "The Cardinality Balanced Multi-target Multi-Bernoulli filter and its implementations," IEEE Trans. Signal Processing, Vol. 57, No. 2, pp. 409–423, 2009. 
+% B.-T. Vo, B.-N. Vo, and A. Cantoni, "The Cardinality Balanced Multi-target Multi-Bernoulli filter and its implementations," IEEE Trans. Signal Processing, Vol. 57, No. 2, pp. 409ï¿½423, 2009. 
 % http://ba-ngu.vo-au.com/vo/VVCmemberSP09.pdf
 % ---BibTeX entry
 % @ARTICLE{CBMEMBER,
@@ -57,9 +57,9 @@ for k=1:meas.K
     for t=1:T_update
         w_temp= compute_pS(model,x_update{t}).*w_update{t};
         J_predict(t)= J_update(t);                                                                                                                              %surviving number of particles in current track
-        r_predict(t)= r_update(t)*sum(w_temp);                                                                                                                  %surviving existence probability
-        x_predict{t}= gen_newstate_fn(model,x_update{t},'noise');                                                                                               %surviving particles
-        w_predict{t}= w_temp/sum(w_temp);                                                                                                                       %surviving weights
+        r_predict(t)= r_update(t)*sum(w_temp);       % eq.39                                                                                                    %surviving existence probability
+        x_predict{t}= gen_newstate_fn(model,x_update{t},'noise');  % propagate state                                                                            %surviving particles
+        w_predict{t}= w_temp/sum(w_temp);            % propagate weight                                                                                         %surviving weights
 
     end                                                  
 
@@ -68,7 +68,7 @@ for k=1:meas.K
     for t=1:model.T_birth
         J_predict(offset+t)= max(round(model.r_birth(t)*filter.J_max),filter.J_min);                                                                            %append birth particles count
         r_predict(offset+t)= model.r_birth(t);                                                                                                                  %append birth probabilities
-        x_predict{offset+t}= gen_gms(model.w_birth{t},model.m_birth{t},model.P_birth{t},J_predict(offset+t));                                                   %append birth particles
+        x_predict{offset+t}= gen_gms(model.w_birth{t},model.m_birth{t},model.P_birth{t},J_predict(offset+t));     %birth is GMS                                 %append birth particles
         w_predict{offset+t}= ones(J_predict(offset+t),1)/J_predict(offset+t);                                                                                   %append birth weights
     end                     
 
@@ -117,7 +117,7 @@ for k=1:meas.K
         pD_vals= compute_pD(model,x_pseudo);
         for ell=1:m
             meas_likelihood= compute_likelihood(model,meas.Z{k}(:,ell),x_pseudo)';
-            r_temp= sum(pD_vals.*w_pseudo2(:).*meas_likelihood)/(model.lambda_c*model.pdf_c+sum(pD_vals.*w_pseudo1(:).*meas_likelihood));
+            r_temp= sum(pD_vals.*w_pseudo2(:).*meas_likelihood)/(model.lambda_c*model.pdf_c+sum(pD_vals.*w_pseudo1(:).*meas_likelihood)); %eq.45
             w_temp= pD_vals.*w_pseudo.*meas_likelihood; w_temp= w_temp/sum(w_temp);
             J_temp= length(w_temp);
             

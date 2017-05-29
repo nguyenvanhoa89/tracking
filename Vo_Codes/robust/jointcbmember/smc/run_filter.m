@@ -47,7 +47,7 @@ P_init= diag([100 10 100 10 1]).^2;
 for j=1:T_update
    w_update{j}= ones(J_update(j),1)*1/J_update(j);
    x_update{j}= [ betarnd(5,5,1,J_update(j)); repmat(x_init, [1, J_update(j)])+chol(P_init)*randn(model.x_dim-1,J_update(j))];
-   l_update{j}= zeros(J_update(j),1);  
+   l_update{j}= zeros(J_update(j),1);  % Initially all priors are clutter,u = 0
 end
 
 
@@ -69,7 +69,7 @@ for k=1:meas.K
         x_birth_temp1= repmat(model.m_birth{t}, [1, J_predict(t)])+model.B_birth{t}*randn(model.x_dim-1,J_predict(t));
         x_predict{t}= [betarnd(model.u_b_tg(t),model.v_b_tg(t),1,J_predict(t)); x_birth_temp1];                                                   %append birth particles
         w_predict{t}= ones(J_predict(t),1)/J_predict(t);                                                                                   %append birth weights
-        l_predict{t}= ones(J_predict(t),1);
+        l_predict{t}= ones(J_predict(t),1); % target type, u = 1
     end     
     
     offset= model.T_birth;
@@ -80,7 +80,7 @@ for k=1:meas.K
         x_birth_temp0= repmat(model.m_birth_clt{t}, [1, J_predict(offset+t)])+model.B_birth_clt{t}*randn(model.x_dim-1,J_predict(offset+t));
         x_predict{offset+t}= [betarnd(model.u_b_clt(t),model.v_b_clt(t),1,J_predict(offset+t)); x_birth_temp0];                                                   %append birth particles
         w_predict{offset+t}= ones(J_predict(offset+t),1)/J_predict(offset+t);
-        l_predict{offset+t}= zeros(J_predict(offset+t),1);
+        l_predict{offset+t}= zeros(J_predict(offset+t),1); % clutter type, u = 0
     end
     
     offset= model.T_birth+model.T_birth_clt;
@@ -99,11 +99,11 @@ for k=1:meas.K
             w_temp0= [];
         end
         
-        r_predict(offset+t)= r_update(t)* (sum(w_temp1)+sum(w_temp0));
-        J_predict(offset+t)= J_update(t);
+        r_predict(offset+t)= r_update(t)* (sum(w_temp1)+sum(w_temp0)); % eq.23
+        J_predict(offset+t)= J_update(t); % update # of particles
         w_predict{offset+t}= [w_temp1/(sum(w_temp1)+sum(w_temp0)); w_temp0/(sum(w_temp1)+sum(w_temp0))];
-        x_predict{offset+t}= [gen_newstate_tg(model,x_update{t}(:,idx1)) gen_newstate_clt(model,x_update{t}(:,idx0))];
-        l_predict{offset+t}= [ones(length(idx1),1); zeros(length(idx0),1) ];
+        x_predict{offset+t}= [gen_newstate_tg(model,x_update{t}(:,idx1)) gen_newstate_clt(model,x_update{t}(:,idx0))]; % stack real + clutter targets
+        l_predict{offset+t}= [ones(length(idx1),1); zeros(length(idx0),1) ];  % stack real (u=1)+ clutter targets (u=0) label,
     end
 
     r_predict= limit_range(r_predict);                                                                         %limit range of 0<r<1 for numerical stability
@@ -123,7 +123,7 @@ for k=1:meas.K
         end_pt= start_pt+J_predict(t)-1;
         idx1= find(l_predict{t}==1);
         if ~isempty(idx1)
-            w_temp1= w_predict{t}(idx1).*x_predict{t}(1,idx1)';
+            w_temp1= w_predict{t}(idx1).*x_predict{t}(1,idx1)'; % weight * detection rate (a = x_predict(1)),of eq.24
             x_temp1= x_predict{t}(:,idx1);
         else
             w_temp1= [];
@@ -140,9 +140,9 @@ for k=1:meas.K
         
         x_pseudo(:,start_pt:end_pt)= cat(2,x_temp1, x_temp0);
         l_pseudo(start_pt:end_pt)= cat(1,ones(length(idx1),1), zeros(length(idx0),1));
-        w_pseudo(start_pt:end_pt) = cat(1,r_predict(t)/(1-r_predict(t))*w_predict{t}(idx1), r_predict(t)/(1-r_predict(t))*w_predict{t}(idx0));
-        w_pseudo1(start_pt:end_pt)= cat(1,r_predict(t)/(1-r_predict(t)*(sum(w_temp1)+sum(w_temp0)))*w_predict{t}(idx1), r_predict(t)/(1-r_predict(t)*(sum(w_temp1)+sum(w_temp0)))*w_predict{t}(idx0));
-        w_pseudo2(start_pt:end_pt)= cat(1,r_predict(t)*(1-r_predict(t))/((1-r_predict(t)*(sum(w_temp1)+sum(w_temp0)))^2)*w_predict{t}(idx1), r_predict(t)*(1-r_predict(t))/((1-r_predict(t)*(sum(w_temp1)+sum(w_temp0)))^2)*w_predict{t}(idx0));
+        w_pseudo(start_pt:end_pt) = cat(1,r_predict(t)/(1-r_predict(t))*w_predict{t}(idx1), r_predict(t)/(1-r_predict(t))*w_predict{t}(idx0)); % for eq.34
+        w_pseudo1(start_pt:end_pt)= cat(1,r_predict(t)/(1-r_predict(t)*(sum(w_temp1)+sum(w_temp0)))*w_predict{t}(idx1), r_predict(t)/(1-r_predict(t)*(sum(w_temp1)+sum(w_temp0)))*w_predict{t}(idx0)); % for eq.34
+        w_pseudo2(start_pt:end_pt)= cat(1,r_predict(t)*(1-r_predict(t))/((1-r_predict(t)*(sum(w_temp1)+sum(w_temp0)))^2)*w_predict{t}(idx1), r_predict(t)*(1-r_predict(t))/((1-r_predict(t)*(sum(w_temp1)+sum(w_temp0)))^2)*w_predict{t}(idx0)); % for eq.34
 
         start_pt= end_pt+1;
     end
@@ -170,16 +170,16 @@ for k=1:meas.K
     %legacy tracks
     for t=1:T_predict  
         idx1= find(l_predict{t}==1);
-        if ~isempty(idx1)
-            w_temp1= w_predict{t}(idx1).*x_predict{t}(1,idx1)';
-            m_temp1= w_predict{t}(idx1).*(1-x_predict{t}(1,idx1)');
+        if ~isempty(idx1) % real target
+            w_temp1= w_predict{t}(idx1).*x_predict{t}(1,idx1)'; % weight * pD
+            m_temp1= w_predict{t}(idx1).*(1-x_predict{t}(1,idx1)'); % weight * qD
         else
             w_temp1= [];
             m_temp1= [];
         end   
         
         idx0= find(l_predict{t}==0);
-        if ~isempty(idx0)
+        if ~isempty(idx0) % clutter target
             w_temp0= w_predict{t}(idx0).*x_predict{t}(1,idx0)';
             m_temp0= w_predict{t}(idx0).*(1-x_predict{t}(1,idx0)');
         else
@@ -225,8 +225,8 @@ for k=1:meas.K
             x_update{offset+ell}= x_pseudo;
             l_update{offset+ell}= l_pseudo;
             
-            r_comp1(offset+ell)= r_temp1;
-            r_comp0(offset+ell)= r_temp0;
+            r_comp1(offset+ell)= r_temp1; % real target
+            r_comp0(offset+ell)= r_temp0; % clutter target
     
         end
         

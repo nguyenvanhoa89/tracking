@@ -162,7 +162,7 @@ for card=0:max(glmb_survive.n)
 end
 
 %---generate predicted hypotheses/components (by convolution of birth and survive GLMBs)
-%perform convolution - just multiplication
+%perform convolution - just multiplication eq.33
 glmb_predict.tt= cat(1,glmb_birth.tt,glmb_survive.tt);                                                                              %concatenate track table
 for bidx= 1:length(glmb_birth.w)
     for sidx= 1:length(glmb_survive.w)
@@ -232,14 +232,14 @@ else %loop over predicted components/hypotheses
             runidx= runidx+1;
         else %otherwise perform update for component
             %calculate best updated hypotheses/components
-            costm= allcostm(glmb_predict.I{pidx},:)./(model.lambda_c*model.pdf_c*repmat(avqd(glmb_predict.I{pidx}),[1 m]));                     %cost matrix
+            costm= allcostm(glmb_predict.I{pidx},:)./(model.lambda_c*model.pdf_c*repmat(avqd(glmb_predict.I{pidx}),[1 m])); %eq.24                    %cost matrix
             neglogcostm= -log(costm);                                                                                                           %negative log cost
-            [uasses,nlcost]= mbestwrap_updt_custom(neglogcostm,round(filter.H_upd*sqrt(glmb_predict.w(pidx))/sum(sqrt(glmb_predict.w))));       %murty's algo to calculate m-best assignment hypotheses/components
+            [uasses,nlcost]= mbestwrap_updt_custom(neglogcostm,round(filter.H_upd*sqrt(glmb_predict.w(pidx))/sum(sqrt(glmb_predict.w))));  % T = w * J_max     %murty's algo to calculate m-best assignment hypotheses/components
             
             %generate corrresponding surviving hypotheses/components
             for hidx=1:length(nlcost)
                 update_hypcmp_tmp= uasses(hidx,:)';
-                glmb_update.w(runidx)= -model.lambda_c+m*log(model.lambda_c*model.pdf_c)+sum(log(avqd(glmb_predict.I{pidx})))+log(glmb_predict.w(pidx))-nlcost(hidx);       %hypothesis/component weight
+                glmb_update.w(runidx)= -model.lambda_c+m*log(model.lambda_c*model.pdf_c)+sum(log(avqd(glmb_predict.I{pidx})))+log(glmb_predict.w(pidx))-nlcost(hidx);       % eq 24.1/ hypothesis/component weight
                 glmb_update.I{runidx}= length(glmb_predict.tt).*update_hypcmp_tmp+glmb_predict.I{pidx};                                                                     %hypothesis/component tracks (via indices to track table)
                 glmb_update.n(runidx)= glmb_predict.n(pidx);                                                                                                                %hypothesis/component cardinality
                 runidx= runidx+1;
